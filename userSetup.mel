@@ -1,0 +1,10 @@
+// This is a Maya startup script.
+// Place in: <drive letter>\Program Files\Autodesk\Maya<version>\scripts
+
+// Open a listening port for Eclipse
+python("import maya.cmds as cmds");
+python("if cmds.commandPort(':7720', q=True) != 1: cmds.commandPort(n=':7720', eo = False, nr = True)");
+
+// Add the root script directory
+python("import sys");
+python("sys.path.insert(0, r'<YOUR ROOT SCRIPT FOLDER>')");
