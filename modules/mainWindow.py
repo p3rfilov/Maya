@@ -30,6 +30,7 @@ class mainWindow(QtWidgets.QWidget):
 		self.ui.setWindowFlags(QtCore.Qt.Drawer) # same as Tool, but supports Windows docking
 		self.closeExistingWindow(self.ui.windowTitle())
 		self.ui.show()
+		self.ui.raise_()
 	
 	def getMayaMainWindow(self):
 		ptr = mui.MQtUtil.mainWindow()
