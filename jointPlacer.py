@@ -41,7 +41,7 @@ class jointPlacer():
         if len(sel) == 1:
             shape = sel[0].getShape()
             if shape.type() == 'mesh':
-                self.mesh = shape
+                self.mesh = str(shape)
 #             cmds.selectMode(component=True) # turn on component mode
             else:
                 self.error()
@@ -52,50 +52,71 @@ class jointPlacer():
         om.MGlobal.displayError('Please select a single mesh')
         self.stop()
     
-    def getEdgeLoop(self):
-        h = cmds.ls(psh=True)
-        loop = cmds.polySelect(self.mesh, edgeLoop=h)
-        return loop
+    def getVertLoop(self):
+        '''
+        Obtain a vertex loop given a mesh face and a ray hit coordinate.
+        1. Get face vertices
+        2. Measure the distance of each vertex to the hit point
+        3. Pick 2 closest vertices and obtain a loop selection
+        '''
+        hit = self.getHitPoint()
+        if hit:
+            hitPos = hit[0]
+            face = hit[1]
+            obj = self.mesh + '.f[{f}]'.format(f=face)
+            face2verts = cmds.polyListComponentConversion(obj, fromFace=True, toVertex=True)
+            verts = []
+            for v in face2verts:
+                verts += cmds.ls(v, fl=True)
+            vertPos = [cmds.pointPosition(v, world=True) for v in verts]
+            print(vertPos)
+#         cmds.SelectEdgeLoopSp()
     
     def getHitPoint(self):
         vpX, vpY, _ = cmds.draggerContext(self.name, query=True, anchorPoint=True)
         pos = om.MPoint()
         dir = om.MVector()
-        hitpoint = om.MFloatPoint()
+        hitPoint = om.MFloatPoint()
+        hitFace = om.MScriptUtil().asIntPtr()
+        
         omui.M3dView().active3dView().viewToWorld(int(vpX), int(vpY), pos, dir)
         pos2 = om.MFloatPoint(pos.x, pos.y, pos.z)
-        for mesh in cmds.ls(type='mesh'):
-            selectionList = om.MSelectionList()
-            selectionList.add(mesh)
-            dagPath = om.MDagPath()
-            selectionList.getDagPath(0, dagPath)
-            fnMesh = om.MFnMesh(dagPath)
-            intersection = fnMesh.closestIntersection(
-            om.MFloatPoint(pos2),
-            om.MFloatVector(dir),
-            None,
-            None,
-            False,
-            om.MSpace.kWorld,
-            99999,
-            False,
-            None,
-            hitpoint,
-            None,
-            None,
-            None,
-            None,
-            None)
-            if intersection:
-                return (hitpoint.x, hitpoint.y, hitpoint.z)
-            else:
-                return ()
+        
+        selectionList = om.MSelectionList()
+        selectionList.add(self.mesh)
+        dagPath = om.MDagPath()
+        selectionList.getDagPath(0, dagPath)
+        fnMesh = om.MFnMesh(dagPath)
+        
+        intersection = fnMesh.closestIntersection(
+        om.MFloatPoint(pos2),   # raySource
+        om.MFloatVector(dir),   # rayDirection
+        None,                   # faceIds
+        None,                   # triIds
+        False,                  # idsSorted
+        om.MSpace.kWorld,       # space
+        99999,                  # maxParam
+        False,                  # testBothDirections
+        None,                   # accelParams
+        hitPoint,               # hitPoint
+        None,                   # hitRayParam
+        hitFace,                # hitFace
+        None,                   # hitTriangle
+        None,                   # hitBary1
+        None)                   # hitBary2
+        
+        if intersection:
+            return (
+                hitPoint,
+                om.MScriptUtil(hitFace).asInt() # get face number from pointer
+                )
+        else:
+            return ()
 
     def onPress(self):
         button = cmds.draggerContext(self.name, query=True, button=True)
         if button != 2:
-            hit = self.getHitPoint()
-            print(hit)
+            vertLoop = self.getVertLoop()
         else:
             self.stop()
     
